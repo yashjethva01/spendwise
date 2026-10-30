@@ -1,16 +1,17 @@
 import cors from 'cors'
 import express from 'express'
+import helmet from 'helmet'
 
 import { env } from './config/env.js'
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
+import { healthRoutes } from './routes/healthRoutes.js'
 
 export const app = express()
 
+app.use(helmet())
 app.use(cors({ origin: env.clientUrl }))
-app.use(express.json())
+app.use(express.json({ limit: '10kb' }))
 
-app.get('/api/health', (_request, response) => {
-  response.json({
-    status: 'ok',
-    service: 'spendwise-server',
-  })
-})
+app.use('/api/health', healthRoutes)
+app.use(notFoundHandler)
+app.use(errorHandler)
