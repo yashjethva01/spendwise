@@ -1,16 +1,45 @@
-import './App.css'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { AuthProvider } from './features/auth/AuthContext'
+import { useAuth } from './features/auth/useAuth'
+import { LoginPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
+import { WelcomePage } from './pages/WelcomePage'
+
+function ProtectedRoute() {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return <div className="page-status">Loading your workspace...</div>
+  }
+
+  return isAuthenticated ? <WelcomePage /> : <Navigate to="/login" replace />
+}
+
+function AppRoutes() {
+  const { isAuthenticated } = useAuth()
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+      />
+      <Route
+        path="/register"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />}
+      />
+      <Route path="/" element={<ProtectedRoute />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
 
 function App() {
   return (
-    <main className="app-shell">
-      <p className="eyebrow">SpendWise Pro</p>
-      <h1>Expense analytics and budget planning, made clear.</h1>
-      <p className="intro">
-        The application foundation is ready. Authentication, transactions,
-        budgets, and insights will be added in later stages.
-      </p>
-      <span className="status">Frontend is running</span>
-    </main>
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   )
 }
 
