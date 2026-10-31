@@ -6,6 +6,7 @@ import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { authRoutes } from './routes/authRoutes.js'
 import { healthRoutes } from './routes/healthRoutes.js'
+import { transactionRoutes } from './routes/transactionRoutes.js'
 
 export const app = express()
 
@@ -15,5 +16,6 @@ app.use(express.json({ limit: '10kb' }))
 
 app.use('/api/health', healthRoutes)
 app.use('/api/auth', authRoutes)
+app.use('/api/transactions', transactionRoutes)
 app.use(notFoundHandler)
 app.use(errorHandler)
