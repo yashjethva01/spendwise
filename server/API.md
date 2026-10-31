@@ -100,3 +100,56 @@ DELETE /api/transactions/:id
 Response: `204 No Content`.
 
 Invalid input returns `400`, missing or cross-user records return `404`, and missing or invalid JWTs return `401`.
+
+## Budgets
+
+Budgets use a UTC calendar period represented by `year` and `month` (`1` through `12`).
+Each user can have one budget per category and month.
+
+```http
+POST /api/budgets
+Authorization: Bearer <jwt>
+Content-Type: application/json
+```
+
+```json
+{
+  "category": "Food",
+  "year": 2026,
+  "month": 10,
+  "monthlyLimit": 10000
+}
+```
+
+Budget responses include server-calculated `spent`, `remaining`, and
+`usagePercentage` values. Duplicate category/month budgets return `409`.
+
+```http
+GET /api/budgets?year=2026&month=10
+PATCH /api/budgets/:id
+DELETE /api/budgets/:id
+```
+
+## Monthly analytics
+
+```http
+GET /api/analytics/monthly?year=2026&month=10
+Authorization: Bearer <jwt>
+```
+
+The backend calculates these values from the authenticated user's transactions:
+
+```json
+{
+  "success": true,
+  "data": {
+    "period": { "year": 2026, "month": 10 },
+    "income": 50000,
+    "expenses": 12500,
+    "netSavings": 37500,
+    "categorySpending": [
+      { "category": "Food", "amount": 5000 }
+    ]
+  }
+}
+```
