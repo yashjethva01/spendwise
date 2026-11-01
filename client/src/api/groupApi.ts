@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Group, GroupBalance, GroupExpense, GroupInvitation, GroupType, SplitMethod, SuggestedSettlement } from '../types/groups'
+import type { Group, GroupBalance, GroupExpense, GroupInvitation, GroupSettlement, GroupType, SplitMethod, SuggestedSettlement, UserBalanceSummary } from '../types/groups'
 
 export async function listInvitations() {
   const response = await apiClient.get<{ data: { invitations: GroupInvitation[] } }>('/groups/invitations')
@@ -55,11 +55,21 @@ export async function getGroupBalances(groupId: string) {
   return response.data.data.balances
 }
 
+export async function getMyGroupBalance(groupId: string) {
+  const response = await apiClient.get<{ data: { balance: UserBalanceSummary } }>(`/groups/${groupId}/expenses/balances/me`)
+  return response.data.data.balance
+}
+
 export async function getSettlementSuggestions(groupId: string) {
   const response = await apiClient.get<{ data: { settlements: SuggestedSettlement[] } }>(`/groups/${groupId}/expenses/settlement-suggestions`)
   return response.data.data.settlements
 }
 
-export async function createGroupSettlement(groupId: string, input: SuggestedSettlement) {
+export async function createGroupSettlement(groupId: string, input: Pick<SuggestedSettlement, 'payerId' | 'recipientId' | 'amountMinor'> & { idempotencyKey: string }) {
   await apiClient.post(`/groups/${groupId}/expenses/settlements`, input)
+}
+
+export async function listGroupSettlements(groupId: string) {
+  const response = await apiClient.get<{ data: { settlements: GroupSettlement[] } }>(`/groups/${groupId}/expenses/settlements`)
+  return response.data.data.settlements
 }

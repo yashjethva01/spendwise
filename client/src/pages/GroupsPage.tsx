@@ -19,6 +19,7 @@ export function GroupsPage() {
   const [invitationLoading, setInvitationLoading] = useState(true)
   const [invitationAction, setInvitationAction] = useState('')
   const [invitationMessage, setInvitationMessage] = useState('')
+  const [search, setSearch] = useState('')
 
   async function loadGroups() {
     setLoading(true)
@@ -37,6 +38,8 @@ export function GroupsPage() {
   }
 
   useEffect(() => { void loadGroups() }, [])
+
+  const visibleGroups = groups.filter((group) => `${group.name} ${group.description ?? ''}`.toLowerCase().includes(search.toLowerCase()))
 
   async function respond(invitation: GroupInvitation, status: 'accepted' | 'rejected') {
     setInvitationAction(invitation.id)
@@ -71,26 +74,28 @@ export function GroupsPage() {
 
   return <div className="content-page">
     <header className="page-header">
-      <div><span className="eyebrow">Shared spending</span><h1>Group Expenses</h1><p>Share expenses, track balances, and settle up with friends.</p></div>
-      <button className="primary-button" type="button" onClick={() => setShowForm((value) => !value)}>Create group</button>
+      <div><span className="eyebrow">Shared spending</span><h1>Group expenses</h1><p>Share expenses, track balances, and settle up with friends.</p></div>
+      <button className="primary-button" type="button" onClick={() => setShowForm(true)}>Create group</button>
     </header>
     {error && <StateMessage kind="error">{error}</StateMessage>}
     {invitationMessage && <div className="success-message">{invitationMessage}</div>}
-    <section className="panel invitations-panel">
+    {invitations.length > 0 && <section className="panel invitations-panel">
       <div className="panel-heading"><div><span className="eyebrow">In-app notifications</span><h2>Pending invitations {invitations.length > 0 && <span className="count-badge">{invitations.length}</span>}</h2></div></div>
       {invitationLoading && <StateMessage kind="loading">Checking for invitations...</StateMessage>}
       {!invitationLoading && !invitations.length && <StateMessage kind="empty">No pending group invitations.</StateMessage>}
       {!invitationLoading && invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><div><strong>{invitation.groupName}</strong><span>Invited by {invitation.inviterName} · {new Date(invitation.createdAt).toLocaleDateString()}</span></div><div className="invitation-actions"><button className="primary-button" type="button" disabled={invitationAction === invitation.id} onClick={() => void respond(invitation, 'accepted')}>{invitationAction === invitation.id ? 'Saving...' : 'Accept'}</button><button className="secondary-button" type="button" disabled={invitationAction === invitation.id} onClick={() => void respond(invitation, 'rejected')}>Reject</button></div></div>)}
-    </section>
-    {showForm && <form className="panel form-stack group-form" onSubmit={submit}>
-      <div className="form-section-heading"><div><span className="eyebrow">New group</span><h2>Start sharing clearly</h2></div></div>
+    </section>}
+    {showForm && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false) }}><form className="modal-panel form-stack group-form" onSubmit={submit}>
+      <div className="form-section-heading"><div><span className="eyebrow">New group</span><h2>Start sharing clearly</h2></div><button className="icon-button modal-close" type="button" onClick={() => setShowForm(false)} disabled={saving} aria-label="Close create group form">×</button></div>
       <div className="field"><label htmlFor="group-name">Name</label><input id="group-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={100} required /></div>
       <div className="field"><label htmlFor="group-description">Description <span>(optional)</span></label><input id="group-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} /></div>
       <div className="field"><label htmlFor="group-type">Type</label><select id="group-type" value={type} onChange={(event) => setType(event.target.value as GroupType)}><option value="friends">Friends</option><option value="trip">Trip</option><option value="home">Home</option><option value="couple">Couple</option><option value="other">Other</option></select></div>
       <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create group'}</button>
-    </form>}
+    </form></div>}
     {loading && <StateMessage kind="loading">Loading your groups...</StateMessage>}
     {!loading && !error && !groups.length && <StateMessage kind="empty">You have no groups yet. Create one to start sharing expenses.</StateMessage>}
-    {!loading && <section className="group-grid">{groups.map((group) => <Link className="panel group-card" to={`/groups/${group.id}`} key={group.id}><span className="eyebrow">{group.type}</span><h2>{group.name}</h2><p>{group.description || 'Shared expenses and balances'}</p><strong>{group.members.length} member{group.members.length === 1 ? '' : 's'}</strong></Link>)}</section>}
+    {!loading && groups.length > 0 && <div className="group-toolbar"><label htmlFor="group-search">Search groups</label><input id="group-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name" /></div>}
+    {!loading && !visibleGroups.length && groups.length > 0 && <StateMessage kind="empty">No groups match your search.</StateMessage>}
+    {!loading && <section className="group-grid">{visibleGroups.map((group) => <Link className="panel group-card" to={`/groups/${group.id}`} key={group.id}><span className="eyebrow">{group.type}</span><h2>{group.name}</h2><p>{group.description || 'Shared expenses and balances'}</p><strong>{group.members.length} member{group.members.length === 1 ? '' : 's'}</strong></Link>)}</section>}
   </div>
 }

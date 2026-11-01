@@ -32,6 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async register(input) {
         saveAuth(await registerUser(input), setUser)
       },
+      updateUser(nextUser) {
+        setUser(nextUser)
+      },
       logout() {
         localStorage.removeItem(TOKEN_KEY)
         setUser(null)

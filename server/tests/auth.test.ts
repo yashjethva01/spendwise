@@ -8,6 +8,7 @@ const userStore = vi.hoisted(() => new Map<string, {
   email: string
   passwordHash: string
   comparePassword: (password: string) => Promise<boolean>
+  save: () => Promise<void>
 }>())
 
 vi.mock('../src/models/User.js', () => ({
@@ -15,13 +16,23 @@ vi.mock('../src/models/User.js', () => ({
     findOne: (filter: { email: string }) => ({
       select: async () => [...userStore.values()].find((user) => user.email === filter.email) ?? null,
     }),
-    findById: async (id: string) => userStore.get(id) ?? null,
+    findById: (id: string) => {
+      const user = userStore.get(id) ?? null
+      return {
+        select: async () => user,
+        then: (resolve: (value: typeof user) => unknown) => Promise.resolve(user).then(resolve),
+      }
+    },
     create: async (input: { name: string; email: string; passwordHash: string }) => {
       const user = {
         _id: { toString: () => input.email },
         id: input.email,
         ...input,
         comparePassword: (password: string) => bcrypt.compare(password, input.passwordHash),
+        save: async () => {
+          input.passwordHash = user.passwordHash
+          userStore.set(input.email, user)
+        },
       }
       userStore.set(input.email, user)
       return user
@@ -125,5 +136,73 @@ describe('authentication API', () => {
 
     expect(missingResponse.status).toBe(401)
     expect(invalidResponse.status).toBe(401)
+  })
+
+  it('updates the authenticated user profile without exposing a password', async () => {
+    const registration = await request(app).post('/api/auth/register').send({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'secure-password',
+    })
+
+    const response = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${registration.body.data.token}`)
+      .send({ name: 'Updated User', email: 'updated@example.com' })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.user).toEqual({
+      id: 'test@example.com',
+      name: 'Updated User',
+      email: 'updated@example.com',
+    })
+    expect(response.body.data.user.passwordHash).toBeUndefined()
+  })
+
+  it('rejects changing the email to another account', async () => {
+    await request(app).post('/api/auth/register').send({
+      name: 'First User',
+      email: 'first@example.com',
+      password: 'secure-password',
+    })
+    const second = await request(app).post('/api/auth/register').send({
+      name: 'Second User',
+      email: 'second@example.com',
+      password: 'secure-password',
+    })
+
+    const response = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${second.body.data.token}`)
+      .send({ name: 'Second User', email: 'first@example.com' })
+
+    expect(response.status).toBe(409)
+  })
+
+  it('rejects an incorrect current password and changes a valid password', async () => {
+    const registration = await request(app).post('/api/auth/register').send({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'secure-password',
+    })
+    const token = registration.body.data.token
+
+    const invalid = await request(app)
+      .post('/api/auth/me/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'wrong-password', newPassword: 'new-password', confirmPassword: 'new-password' })
+    expect(invalid.status).toBe(401)
+
+    const valid = await request(app)
+      .post('/api/auth/me/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'secure-password', newPassword: 'new-password', confirmPassword: 'new-password' })
+    expect(valid.status).toBe(200)
+
+    const login = await request(app).post('/api/auth/login').send({
+      email: 'test@example.com',
+      password: 'new-password',
+    })
+    expect(login.status).toBe(200)
   })
 })

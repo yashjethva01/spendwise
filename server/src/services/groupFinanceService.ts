@@ -30,6 +30,12 @@ export interface SuggestedSettlement {
   amountMinor: number
 }
 
+export interface PairwiseBalance {
+  fromUserId: string
+  toUserId: string
+  amountMinor: number
+}
+
 const PERCENTAGE_TOLERANCE = 0.000001
 
 function assertPositiveMinorAmount(amountMinor: number): void {
@@ -203,4 +209,76 @@ export function suggestSettlements(
   }
 
   return suggestions
+}
+
+function pairKey(fromUserId: string, toUserId: string): string {
+  return `${fromUserId}->${toUserId}`
+}
+
+export function calculatePairwiseBalances(
+  memberIds: string[],
+  expenses: GroupExpenseForBalance[],
+  settlements: SettlementForBalance[] = [],
+): PairwiseBalance[] {
+  const members = new Set(memberIds)
+  const raw = new Map<string, number>()
+
+  const add = (fromUserId: string, toUserId: string, amountMinor: number) => {
+    if (!members.has(fromUserId) || !members.has(toUserId) || fromUserId === toUserId) {
+      throw new AppError(400, 'Pairwise participants must be different group members.')
+    }
+    raw.set(pairKey(fromUserId, toUserId), (raw.get(pairKey(fromUserId, toUserId)) ?? 0) + amountMinor)
+  }
+
+  for (const expense of expenses) {
+    assertPositiveMinorAmount(expense.amountMinor)
+    if (!members.has(expense.payerId)) throw new AppError(400, 'Expense payer must be a group member.')
+    const shareTotal = expense.shares.reduce((sum, share) => sum + share.amountMinor, 0)
+    if (shareTotal !== expense.amountMinor) throw new AppError(400, 'Expense shares must equal the expense amount.')
+    for (const share of expense.shares) {
+      if (!members.has(share.userId)) throw new AppError(400, 'Expense participant must be a group member.')
+      if (!Number.isSafeInteger(share.amountMinor) || share.amountMinor < 0) {
+        throw new AppError(400, 'Expense shares must be non-negative whole minor units.')
+      }
+      if (share.userId !== expense.payerId && share.amountMinor > 0) {
+        add(share.userId, expense.payerId, share.amountMinor)
+      }
+    }
+  }
+
+  for (const settlement of settlements) {
+    assertPositiveMinorAmount(settlement.amountMinor)
+    add(settlement.payerId, settlement.recipientId, -settlement.amountMinor)
+  }
+
+  const pairs: PairwiseBalance[] = []
+  const processed = new Set<string>()
+  for (const [key, amount] of raw) {
+    const [fromUserId, toUserId] = key.split('->')
+    const reverseKey = pairKey(toUserId, fromUserId)
+    if (processed.has(key) || processed.has(reverseKey)) continue
+    const net = amount - (raw.get(reverseKey) ?? 0)
+    if (net > 0) pairs.push({ fromUserId, toUserId, amountMinor: net })
+    if (net < 0) pairs.push({ fromUserId: toUserId, toUserId: fromUserId, amountMinor: -net })
+    processed.add(key)
+    processed.add(reverseKey)
+  }
+  return pairs.filter((pair) => pair.amountMinor > 0)
+}
+
+export function summarizeUserBalances(
+  userId: string,
+  pairs: PairwiseBalance[],
+): { owes: PairwiseBalance[]; owedToYou: PairwiseBalance[]; totalOwedMinor: number; totalOwedToYouMinor: number; netMinor: number } {
+  const owes = pairs.filter((pair) => pair.fromUserId === userId && pair.amountMinor > 0)
+  const owedToYou = pairs.filter((pair) => pair.toUserId === userId && pair.amountMinor > 0)
+  const totalOwedMinor = owes.reduce((sum, pair) => sum + pair.amountMinor, 0)
+  const totalOwedToYouMinor = owedToYou.reduce((sum, pair) => sum + pair.amountMinor, 0)
+  return {
+    owes,
+    owedToYou,
+    totalOwedMinor,
+    totalOwedToYouMinor,
+    netMinor: totalOwedToYouMinor - totalOwedMinor,
+  }
 }

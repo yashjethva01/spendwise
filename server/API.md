@@ -6,6 +6,45 @@ All transaction endpoints require:
 Authorization: Bearer <jwt>
 ```
 
+## Account
+
+### Get current profile
+
+```http
+GET /api/auth/me
+```
+
+### Update current profile
+
+```http
+PATCH /api/auth/me
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Updated Name",
+  "email": "updated@example.com"
+}
+```
+
+### Change password
+
+```http
+POST /api/auth/me/password
+Content-Type: application/json
+```
+
+```json
+{
+  "currentPassword": "current-password",
+  "newPassword": "new-password",
+  "confirmPassword": "new-password"
+}
+```
+
+Password hashes are never returned by these endpoints.
+   
 ## Transactions
 
 ### Create
@@ -214,6 +253,7 @@ Protected endpoints include:
 - `PATCH /api/groups/:groupId/expenses/:id`
 - `DELETE /api/groups/:groupId/expenses/:id`
 - `GET /api/groups/:groupId/expenses/balances`
+- `GET /api/groups/:groupId/expenses/balances/me`
 - `GET /api/groups/:groupId/expenses/settlement-suggestions`
 - `GET /api/groups/:groupId/expenses/settlements`
 - `POST /api/groups/:groupId/expenses/settlements`
@@ -229,7 +269,18 @@ responses.
 Expense creation supports `equal`, `exact`, and `percentage` split methods.
 Exact shares must total the expense amount and percentages must total 100%.
 Equal and percentage splits allocate leftover paise deterministically in
-participant order. A positive balance means the member should receive money;
-a negative balance means the member owes money. Settlement suggestions use a
+participant order. Group, expense, balance, and settlement responses include
+safe display names alongside stable user IDs; missing users are returned as
+`Unknown member`. A positive balance means the member should receive money; a
+negative balance means the member owes money. Settlement suggestions use a
 greedy debtor-to-creditor algorithm and are suggestions, not proof that money
-was transferred externally.
+was transferred externally. `POST /api/groups/:groupId/expenses/settlements`
+accepts an optional `idempotencyKey`; clients should reuse the same key when
+retrying one record-payment request so a repeated submission returns the
+original settlement instead of creating another record.
+
+`GET /api/groups/:groupId/expenses/balances/me` returns only the authenticated
+member's pairwise counterparties, totals owed, totals owed to them, and net
+position. `GET /api/groups/:groupId/expenses/settlement-suggestions` likewise
+returns only simplified settlement suggestions involving the authenticated
+member.

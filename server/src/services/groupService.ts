@@ -7,8 +7,10 @@ import { GroupSettlementModel } from '../models/GroupSettlement.js'
 import { UserModel } from '../models/User.js'
 import { AppError } from '../middleware/errorHandler.js'
 import {
+  calculatePairwiseBalances,
   calculateExpenseShares,
   calculateGroupBalances,
+  summarizeUserBalances,
   suggestSettlements,
 } from './groupFinanceService.js'
 import type {
@@ -36,7 +38,17 @@ function canManage(group: GroupDocument, userId: string): boolean {
   return role === 'owner' || role === 'admin'
 }
 
-function groupResponse(group: GroupDocument) {
+async function userNames(userIds: string[]): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(userIds)]
+  const users = await Promise.all(uniqueIds.map(async (userId) => {
+    const user = await UserModel.findById(userId).select('name')
+    return [userId, user?.name ?? 'Unknown member'] as const
+  }))
+  return new Map(users)
+}
+
+async function groupResponse(group: GroupDocument) {
+  const names = await userNames(group.members.map((item) => item.userId.toString()))
   return {
     id: group._id.toString(),
     name: group.name,
@@ -45,6 +57,7 @@ function groupResponse(group: GroupDocument) {
     ownerId: group.ownerId.toString(),
     members: group.members.map((item) => ({
       userId: item.userId.toString(),
+      name: names.get(item.userId.toString()) ?? 'Unknown member',
       role: item.role,
       joinedAt: item.joinedAt,
     })),
@@ -53,7 +66,11 @@ function groupResponse(group: GroupDocument) {
   }
 }
 
-function expenseResponse(expense: { _id: Types.ObjectId; groupId: Types.ObjectId; title: string; amountMinor: number; currency: string; category: string; date: Date; payerId: Types.ObjectId; participantIds: Types.ObjectId[]; splitMethod: string; shares: Array<{ userId: Types.ObjectId; amountMinor: number }>; notes?: string; createdBy: Types.ObjectId; createdAt: Date; updatedAt: Date }) {
+async function expenseResponse(expense: { _id: Types.ObjectId; groupId: Types.ObjectId; title: string; amountMinor: number; currency: string; category: string; date: Date; payerId: Types.ObjectId; participantIds: Types.ObjectId[]; splitMethod?: string; shares: Array<{ userId: Types.ObjectId; amountMinor: number }>; notes?: string; createdBy: Types.ObjectId; createdAt: Date; updatedAt: Date }) {
+  const names = await userNames([
+    expense.payerId.toString(),
+    ...expense.participantIds.map((id) => id.toString()),
+  ])
   return {
     id: expense._id.toString(),
     groupId: expense.groupId.toString(),
@@ -63,10 +80,13 @@ function expenseResponse(expense: { _id: Types.ObjectId; groupId: Types.ObjectId
     category: expense.category,
     date: expense.date,
     payerId: expense.payerId.toString(),
+    payerName: names.get(expense.payerId.toString()) ?? 'Unknown member',
     participantIds: expense.participantIds.map((id) => id.toString()),
-    splitMethod: expense.splitMethod,
+    participantNames: expense.participantIds.map((id) => names.get(id.toString()) ?? 'Unknown member'),
+    splitMethod: expense.splitMethod ?? 'equal',
     shares: expense.shares.map((share) => ({
       userId: share.userId.toString(),
+      name: names.get(share.userId.toString()) ?? 'Unknown member',
       amountMinor: share.amountMinor,
     })),
     notes: expense.notes,
@@ -100,7 +120,7 @@ export async function listGroups(userId: string) {
   const groups = await GroupModel.find({
     'members.userId': parseId(userId, 'User ID'),
   }).sort({ updatedAt: -1 })
-  return groups.map(groupResponse)
+  return Promise.all(groups.map(groupResponse))
 }
 
 export async function getGroup(userId: string, groupId: string) {
@@ -258,7 +278,7 @@ export async function listExpenses(userId: string, groupId: string, query: Group
     GroupExpenseModel.countDocuments(filter),
   ])
   return {
-    items: items.map(expenseResponse),
+    items: await Promise.all(items.map(expenseResponse)),
     pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) },
   }
 }
@@ -287,7 +307,7 @@ export async function updateExpense(userId: string, groupId: string, expenseId: 
     date: input.date ?? existing.date,
     payerId: input.payerId ?? existing.payerId.toString(),
     participants: input.participants ?? existing.participantIds.map((id, index) => ({ userId: id.toString(), value: existing.shares[index]?.amountMinor })),
-    splitMethod: input.splitMethod ?? existing.splitMethod,
+    splitMethod: input.splitMethod ?? existing.splitMethod ?? 'equal',
     notes: input.notes ?? existing.notes,
   }
   validateExpenseMembers(group, merged)
@@ -330,19 +350,88 @@ export async function getGroupBalances(userId: string, groupId: string) {
       amountMinor: settlement.amountMinor,
     })),
   )
-  return [...balances.entries()].map(([memberId, amountMinor]) => ({ userId: memberId, amountMinor }))
+  const names = await userNames([...balances.keys()])
+  return [...balances.entries()].map(([memberId, amountMinor]) => ({
+    userId: memberId,
+    name: names.get(memberId) ?? 'Unknown member',
+    amountMinor,
+  }))
 }
 
 export async function getSettlementSuggestions(userId: string, groupId: string) {
   const balances = await getGroupBalances(userId, groupId)
-  return suggestSettlements(new Map(balances.map((item) => [item.userId, item.amountMinor])))
+  const suggestions = suggestSettlements(new Map(balances.map((item) => [item.userId, item.amountMinor])))
+  const relevantSuggestions = suggestions.filter((item) => item.payerId === userId || item.recipientId === userId)
+  const names = await userNames(relevantSuggestions.flatMap((item) => [item.payerId, item.recipientId]))
+  return relevantSuggestions.map((item) => ({
+    ...item,
+    payerName: names.get(item.payerId) ?? 'Unknown member',
+    recipientName: names.get(item.recipientId) ?? 'Unknown member',
+  }))
+}
+
+export async function getUserBalanceSummary(userId: string, groupId: string) {
+  const group = await getGroupForMember(groupId, userId)
+  const [expenses, settlements] = await Promise.all([
+    GroupExpenseModel.find({ groupId: group._id }),
+    GroupSettlementModel.find({ groupId: group._id, status: 'completed' }),
+  ])
+  const pairs = calculatePairwiseBalances(
+    groupMemberIds(group),
+    expenses.map((expense) => ({
+      payerId: expense.payerId.toString(),
+      amountMinor: expense.amountMinor,
+      shares: expense.shares.map((share) => ({ userId: share.userId.toString(), amountMinor: share.amountMinor })),
+    })),
+    settlements.map((settlement) => ({
+      payerId: settlement.payerId.toString(),
+      recipientId: settlement.recipientId.toString(),
+      amountMinor: settlement.amountMinor,
+    })),
+  )
+  const summary = summarizeUserBalances(userId, pairs)
+  const names = await userNames(pairs.flatMap((pair) => [pair.fromUserId, pair.toUserId]))
+  return {
+    owes: summary.owes.map((pair) => ({
+      userId: pair.toUserId,
+      name: names.get(pair.toUserId) ?? 'Unknown member',
+      amountMinor: pair.amountMinor,
+    })),
+    owedToYou: summary.owedToYou.map((pair) => ({
+      userId: pair.fromUserId,
+      name: names.get(pair.fromUserId) ?? 'Unknown member',
+      amountMinor: pair.amountMinor,
+    })),
+    totalOwedMinor: summary.totalOwedMinor,
+    totalOwedToYouMinor: summary.totalOwedToYouMinor,
+    netMinor: summary.netMinor,
+  }
 }
 
 export async function createSettlement(userId: string, groupId: string, input: SettlementInput) {
   const group = await getGroupForMember(groupId, userId)
+  if (input.idempotencyKey) {
+    const existing = await GroupSettlementModel.findOne({
+      groupId: group._id,
+      idempotencyKey: input.idempotencyKey,
+    })
+    if (existing) {
+      const names = await userNames([existing.payerId.toString(), existing.recipientId.toString()])
+      return {
+        id: existing._id.toString(),
+        payerId: existing.payerId.toString(),
+        payerName: names.get(existing.payerId.toString()) ?? 'Unknown member',
+        recipientId: existing.recipientId.toString(),
+        recipientName: names.get(existing.recipientId.toString()) ?? 'Unknown member',
+        amountMinor: existing.amountMinor,
+        status: existing.status,
+        createdAt: existing.createdAt,
+      }
+    }
+  }
   const balances = new Map((await getGroupBalances(userId, groupId)).map((item) => [item.userId, item.amountMinor]))
-  if (input.payerId !== userId && !canManage(group, userId)) {
-    throw new AppError(403, 'Only the debtor or a group admin can record this settlement.')
+  if (input.payerId !== userId && input.recipientId !== userId && !canManage(group, userId)) {
+    throw new AppError(403, 'Only a settlement participant or group admin can record this settlement.')
   }
   if (input.payerId === input.recipientId) throw new AppError(400, 'A settlement cannot be made to yourself.')
   if ((balances.get(input.payerId) ?? 0) >= 0 || (balances.get(input.recipientId) ?? 0) <= 0) {
@@ -358,12 +447,16 @@ export async function createSettlement(userId: string, groupId: string, input: S
     amountMinor: input.amountMinor,
     currency: 'INR',
     status: 'completed',
+    idempotencyKey: input.idempotencyKey,
     createdBy: parseId(userId, 'User ID'),
   })
+  const names = await userNames([input.payerId, input.recipientId])
   return {
     id: settlement._id.toString(),
     payerId: settlement.payerId.toString(),
+    payerName: names.get(input.payerId) ?? 'Unknown member',
     recipientId: settlement.recipientId.toString(),
+    recipientName: names.get(input.recipientId) ?? 'Unknown member',
     amountMinor: settlement.amountMinor,
     status: settlement.status,
     createdAt: settlement.createdAt,
@@ -373,10 +466,16 @@ export async function createSettlement(userId: string, groupId: string, input: S
 export async function listSettlements(userId: string, groupId: string) {
   await getGroupForMember(groupId, userId)
   const settlements = await GroupSettlementModel.find({ groupId: parseId(groupId, 'Group ID') }).sort({ createdAt: -1 })
+  const names = await userNames(settlements.flatMap((item) => [
+    item.payerId.toString(),
+    item.recipientId.toString(),
+  ]))
   return settlements.map((settlement) => ({
     id: settlement._id.toString(),
     payerId: settlement.payerId.toString(),
+    payerName: names.get(settlement.payerId.toString()) ?? 'Unknown member',
     recipientId: settlement.recipientId.toString(),
+    recipientName: names.get(settlement.recipientId.toString()) ?? 'Unknown member',
     amountMinor: settlement.amountMinor,
     status: settlement.status,
     createdAt: settlement.createdAt,

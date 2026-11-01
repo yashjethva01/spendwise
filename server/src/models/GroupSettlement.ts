@@ -9,6 +9,7 @@ export interface GroupSettlement {
   amountMinor: number
   currency: 'INR'
   status: SettlementStatus
+  idempotencyKey?: string
   createdBy: Types.ObjectId
   createdAt: Date
   updatedAt: Date
@@ -25,6 +26,7 @@ const settlementSchema = new Schema<GroupSettlement>(
     amountMinor: { type: Number, required: true, min: 1 },
     currency: { type: String, enum: ['INR'], required: true, default: 'INR' },
     status: { type: String, enum: ['completed'], required: true, default: 'completed' },
+    idempotencyKey: { type: String, trim: true, sparse: true, unique: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true },

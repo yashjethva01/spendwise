@@ -5,6 +5,7 @@ import {
   deleteExpense,
   getGroupBalances,
   getSettlementSuggestions,
+  getUserBalanceSummary,
   listExpenses,
   updateExpense,
 } from '../services/groupService.js'
@@ -29,6 +30,9 @@ export async function remove(request: Request, response: Response): Promise<void
 }
 export async function balances(request: Request, response: Response): Promise<void> {
   response.json({ success: true, data: { balances: await getGroupBalances(request.userId!, request.params.groupId as string) } })
+}
+export async function userBalance(request: Request, response: Response): Promise<void> {
+  response.json({ success: true, data: { balance: await getUserBalanceSummary(request.userId!, request.params.groupId as string) } })
 }
 export async function suggestions(request: Request, response: Response): Promise<void> {
   response.json({ success: true, data: { settlements: await getSettlementSuggestions(request.userId!, request.params.groupId as string) } })

@@ -64,6 +64,7 @@ export const settlementSchema = z.object({
   payerId: objectId,
   recipientId: objectId,
   amountMinor: z.number().int().safe().positive().max(100_000_000_000),
+  idempotencyKey: z.string().trim().min(1).max(100).optional(),
 })
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>

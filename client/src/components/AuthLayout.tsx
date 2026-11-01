@@ -4,7 +4,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="auth-layout">
       <section className="brand-panel">
-        <div className="brand-mark">SpendWise Pro</div>
+        <div className="brand-mark">SpendWise</div>
         <div className="brand-copy">
           <span className="eyebrow">A clearer view of your money</span>
           <h1>Make every rupee count.</h1>

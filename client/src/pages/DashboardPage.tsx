@@ -7,16 +7,25 @@ import { StateMessage } from '../components/StateMessage'
 import { SpendingInsightPanel } from '../components/SpendingInsightPanel'
 import { getApiErrorMessage } from '../utils/apiErrors'
 import { currentPeriod, formatCurrency, monthLabel } from '../utils/formatters'
+import { getGreetingForDate } from '../utils/greeting'
+import { useAuth } from '../features/auth/useAuth'
 import type { Analytics, Budget } from '../types/finance'
 
 const colors = ['#3767d6', '#e89a45', '#46a67c', '#9c6ade', '#ef6a62', '#70819e']
 
 export function DashboardPage() {
+  const { user } = useAuth()
+  const [now, setNow] = useState(() => new Date())
   const [period, setPeriod] = useState(useMemo(() => currentPeriod(), []))
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -32,7 +41,7 @@ export function DashboardPage() {
   const percentage = totals.limit ? (totals.spent / totals.limit) * 100 : 0
 
   return <div className="content-page">
-    <header className="page-header"><div><span className="eyebrow">Financial overview</span><h1>Good morning.</h1><p>Here is your money story for {monthLabel(period.year, period.month)}.</p></div><PeriodPicker year={period.year} month={period.month} onChange={(year, month) => setPeriod({ year, month })} /></header>
+    <header className="page-header"><div><span className="eyebrow">Financial overview</span><h1>{getGreetingForDate(now)}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.</h1><p>Here is your money story for {monthLabel(period.year, period.month)}.</p></div><PeriodPicker year={period.year} month={period.month} onChange={(year, month) => setPeriod({ year, month })} /></header>
     {loading && <StateMessage kind="loading">Loading your financial overview...</StateMessage>}
     {error && <StateMessage kind="error">{error}</StateMessage>}
     {!loading && !error && analytics && <div className="dashboard-stack">

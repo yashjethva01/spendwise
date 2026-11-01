@@ -17,3 +17,14 @@ export interface LoginInput {
 export interface RegisterInput extends LoginInput {
   name: string
 }
+
+export interface ProfileUpdateInput {
+  name: string
+  email: string
+}
+
+export interface PasswordChangeInput {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}

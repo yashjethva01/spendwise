@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 import { env } from '../config/env.js'
 import { UserModel, type UserDocument } from '../models/User.js'
-import type { LoginInput, RegisterInput } from '../validators/authValidators.js'
+import type { LoginInput, PasswordChangeInput, ProfileUpdateInput, RegisterInput } from '../validators/authValidators.js'
 import { AppError } from '../middleware/errorHandler.js'
 
 const SALT_ROUNDS = 12
@@ -64,4 +64,33 @@ export async function getUserById(userId: string) {
   }
 
   return toPublicUser(user)
+}
+
+export async function updateUserProfile(userId: string, input: ProfileUpdateInput) {
+  const email = input.email.toLowerCase()
+  const existingUser = await UserModel.findOne({ email }).select('+passwordHash')
+
+  if (existingUser && existingUser.id !== userId) {
+    throw new AppError(409, 'An account with that email already exists.')
+  }
+
+  const user = await UserModel.findById(userId)
+  if (!user) throw new AppError(401, 'Authenticated user was not found.')
+
+  user.name = input.name
+  user.email = email
+  await user.save()
+  return toPublicUser(user)
+}
+
+export async function changeUserPassword(userId: string, input: PasswordChangeInput) {
+  const user = await UserModel.findById(userId).select('+passwordHash')
+  if (!user) throw new AppError(401, 'Authenticated user was not found.')
+
+  if (!(await user.comparePassword(input.currentPassword))) {
+    throw new AppError(401, 'Current password is incorrect.')
+  }
+
+  user.passwordHash = await bcrypt.hash(input.newPassword, SALT_ROUNDS)
+  await user.save()
 }

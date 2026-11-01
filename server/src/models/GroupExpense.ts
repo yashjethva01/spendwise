@@ -16,7 +16,7 @@ export interface GroupExpense {
   date: Date
   payerId: Types.ObjectId
   participantIds: Types.ObjectId[]
-  splitMethod: GroupExpenseSplitMethod
+  splitMethod?: GroupExpenseSplitMethod
   shares: ExpenseShare[]
   notes?: string
   createdBy: Types.ObjectId
@@ -48,7 +48,7 @@ const expenseSchema = new Schema<GroupExpense>(
     splitMethod: {
       type: String,
       enum: ['equal', 'exact', 'percentage'],
-      required: true,
+      required: false,
     },
     shares: { type: [shareSchema], required: true },
     notes: { type: String, trim: true, maxlength: 500 },

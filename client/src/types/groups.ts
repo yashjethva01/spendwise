@@ -3,6 +3,7 @@ export type SplitMethod = 'equal' | 'exact' | 'percentage'
 
 export interface GroupMember {
   userId: string
+  name: string
   role: 'owner' | 'admin' | 'member'
   joinedAt: string
 }
@@ -27,9 +28,11 @@ export interface GroupExpense {
   category: string
   date: string
   payerId: string
+  payerName: string
   participantIds: string[]
+  participantNames: string[]
   splitMethod: SplitMethod
-  shares: Array<{ userId: string; amountMinor: number }>
+  shares: Array<{ userId: string; name: string; amountMinor: number }>
   notes?: string
   createdAt: string
   updatedAt: string
@@ -37,13 +40,41 @@ export interface GroupExpense {
 
 export interface GroupBalance {
   userId: string
+  name: string
   amountMinor: number
+}
+
+export interface UserBalanceCounterparty {
+  userId: string
+  name: string
+  amountMinor: number
+}
+
+export interface UserBalanceSummary {
+  owes: UserBalanceCounterparty[]
+  owedToYou: UserBalanceCounterparty[]
+  totalOwedMinor: number
+  totalOwedToYouMinor: number
+  netMinor: number
 }
 
 export interface SuggestedSettlement {
   payerId: string
+  payerName: string
   recipientId: string
+  recipientName: string
   amountMinor: number
+}
+
+export interface GroupSettlement {
+  id: string
+  payerId: string
+  payerName: string
+  recipientId: string
+  recipientName: string
+  amountMinor: number
+  status: 'completed'
+  createdAt: string
 }
 
 export interface GroupInvitation {
