@@ -79,6 +79,20 @@ describe('spending insight API', () => {
     expect(response.body.error.message).toBe('The AI provider is temporarily busy. Try again shortly.')
   })
 
+  it('rejects malformed provider output safely', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ inlineData: 'not-text' }] } }],
+    }), { status: 200 })))
+
+    const response = await request(app)
+      .post('/api/insights/spending-summary')
+      .set('Authorization', authHeader('507f1f77bcf86cd799439016'))
+      .send({ year: 2026, month: 10 })
+
+    expect(response.status).toBe(502)
+    expect(response.body.error.message).toBe('The AI provider returned an unusable response.')
+  })
+
   it('rejects invalid periods before calling the provider', async () => {
     const fetchMock = vi.mocked(fetch)
     const response = await request(app)

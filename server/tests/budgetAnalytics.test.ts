@@ -234,6 +234,35 @@ describe('budget and analytics API', () => {
     expect(deleteResponse.status).toBe(204)
   })
 
+  it('reports overspending from the authenticated user only', async () => {
+    transactionStore.push({
+      userId: userOneId,
+      type: 'expense',
+      amount: 1500,
+      category: 'Food',
+      date: new Date('2026-10-15T00:00:00.000Z'),
+    })
+    transactionStore.push({
+      userId: userTwoId,
+      type: 'expense',
+      amount: 9000,
+      category: 'Food',
+      date: new Date('2026-10-15T00:00:00.000Z'),
+    })
+
+    const createResponse = await request(app)
+      .post('/api/budgets')
+      .set('Authorization', authHeader(userOneId))
+      .send({ category: 'Food', year: 2026, month: 10, monthlyLimit: 1000 })
+
+    expect(createResponse.status).toBe(201)
+    expect(createResponse.body.data.budget).toMatchObject({
+      spent: 1500,
+      remaining: -500,
+      usagePercentage: 150,
+    })
+  })
+
   it('rejects invalid periods and cross-user budget access', async () => {
     const invalidResponse = await request(app)
       .get('/api/analytics/monthly?year=2026&month=13')
