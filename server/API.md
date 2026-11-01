@@ -153,3 +153,41 @@ The backend calculates these values from the authenticated user's transactions:
   }
 }
 ```
+
+## Spending insights
+
+```http
+POST /api/insights/spending-summary
+Authorization: Bearer <jwt>
+Content-Type: application/json
+```
+
+```json
+{
+  "year": 2026,
+  "month": 10
+}
+```
+
+The backend calculates monthly analytics and budget usage first, then sends only
+those aggregates to Gemini. It does not send passwords, JWTs, email addresses,
+transaction descriptions, or raw transaction records.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "period": { "year": 2026, "month": 10 },
+    "summary": "Food is your largest spending category...",
+    "disclaimer": "Informational only; this is not financial advice."
+  }
+}
+```
+
+The endpoint is limited to five requests per user per fifteen minutes. If Gemini
+is unavailable, the endpoint returns a safe `503` response and the core
+dashboard remains available. The default model is `gemini-3.8-flash`; set
+`GEMINI_MODEL` in `server/.env` if you want to use another model available to
+your API key.

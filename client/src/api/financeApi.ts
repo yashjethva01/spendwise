@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Analytics, Budget, Transaction, TransactionFilters, TransactionInput, TransactionList } from '../types/finance'
+import type { Analytics, Budget, SpendingInsight, Transaction, TransactionFilters, TransactionInput, TransactionList } from '../types/finance'
 
 function queryParams(params: object) {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== ''))
@@ -7,6 +7,11 @@ function queryParams(params: object) {
 
 export async function getMonthlyAnalytics(year: number, month: number) {
   const response = await apiClient.get<{ data: Analytics }>('/analytics/monthly', { params: { year, month } })
+  return response.data.data
+}
+
+export async function getSpendingInsight(year: number, month: number) {
+  const response = await apiClient.post<{ data: SpendingInsight }>('/insights/spending-summary', { year, month })
   return response.data.data
 }
 

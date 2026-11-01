@@ -55,3 +55,9 @@ export interface Analytics {
   netSavings: number
   categorySpending: Array<{ category: string; amount: number }>
 }
+
+export interface SpendingInsight {
+  period: { year: number; month: number }
+  summary: string
+  disclaimer: string
+}

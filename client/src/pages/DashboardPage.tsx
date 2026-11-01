@@ -4,6 +4,7 @@ import { getBudgets, getMonthlyAnalytics } from '../api/financeApi'
 import { MetricCard } from '../components/MetricCard'
 import { PeriodPicker } from '../components/PeriodPicker'
 import { StateMessage } from '../components/StateMessage'
+import { SpendingInsightPanel } from '../components/SpendingInsightPanel'
 import { getApiErrorMessage } from '../utils/apiErrors'
 import { currentPeriod, formatCurrency, monthLabel } from '../utils/formatters'
 import type { Analytics, Budget } from '../types/finance'
@@ -41,6 +42,7 @@ export function DashboardPage() {
         <article className="panel chart-panel"><div className="panel-heading"><div><span className="eyebrow">Where it goes</span><h2>Spending by category</h2></div></div>{analytics.categorySpending.length ? <div className="chart-container"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={analytics.categorySpending} dataKey="amount" nameKey="category" innerRadius={62} outerRadius={92} paddingAngle={3}>{analytics.categorySpending.map((entry, index) => <Cell key={entry.category} fill={colors[index % colors.length]} />)}</Pie><Tooltip formatter={(value) => formatCurrency(Number(value))} /></PieChart></ResponsiveContainer></div> : <StateMessage kind="empty">No expenses recorded for this month.</StateMessage>}</article>
       </section>
       <section className="panel budget-panel"><div className="panel-heading"><div><span className="eyebrow">Plan vs reality</span><h2>Budget utilization</h2></div></div>{budgets.length ? budgets.map((budget) => <div className="budget-row" key={budget.id}><div className="budget-label"><strong>{budget.category}</strong><span>{formatCurrency(budget.spent)} of {formatCurrency(budget.monthlyLimit)}</span></div><div className="progress-track"><div className={`progress-fill ${budget.usagePercentage > 100 ? 'over-budget' : ''}`} style={{ width: `${Math.min(budget.usagePercentage, 100)}%` }} /></div></div>) : <StateMessage kind="empty">No budgets set for this month yet.</StateMessage>}</section>
+      <SpendingInsightPanel year={period.year} month={period.month} />
     </div>}
   </div>
 }

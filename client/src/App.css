@@ -258,6 +258,11 @@
 .panel-heading h2, .form-section-heading h2 { margin: .35rem 0 0; color: #172033; font-size: 1.25rem; letter-spacing: -.03em; }
 .chart-container { width: 100%; height: 18rem; margin-top: 1rem; }
 .state-message { display: grid; min-height: 8rem; place-items: center; padding: 1rem; color: #68748a; text-align: center; }
+.insight-panel { display: grid; gap: 1rem; }
+.insight-placeholder { margin: 0; color: #68748a; line-height: 1.6; }
+.insight-result { border-left: 3px solid #9c6ade; padding: .2rem 1rem; color: #34415a; line-height: 1.7; }
+.insight-result p { margin: 0 0 .6rem; white-space: pre-line; }
+.insight-result small { color: #68748a; }
 .state-error { min-height: auto; border: 1px solid #f3b7b2; border-radius: .7rem; color: #8d1d16; background: #fff3f2; }
 .budget-panel { display: grid; gap: 1.25rem; }.budget-row { display: grid; gap: .55rem; }.budget-label { color: #34415a; font-size: .85rem; }.budget-label span { color: #68748a; font-size: .78rem; }
 .progress-track { height: .55rem; overflow: hidden; border-radius: 999px; background: #edf1f7; }.progress-fill { height: 100%; border-radius: inherit; background: #3767d6; }.progress-fill.over-budget { background: #ef6a62; }
