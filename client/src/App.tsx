@@ -9,6 +9,8 @@ import { BudgetsPage } from './pages/BudgetsPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { TransactionsPage } from './pages/TransactionsPage'
+import { GroupsPage } from './pages/GroupsPage'
+import { GroupDetailsPage } from './pages/GroupDetailsPage'
 
 function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -37,6 +39,8 @@ function AppRoutes() {
         <Route index element={<DashboardPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="budgets" element={<BudgetsPage />} />
+        <Route path="groups" element={<GroupsPage />} />
+        <Route path="groups/:id" element={<GroupDetailsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

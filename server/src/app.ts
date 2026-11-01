@@ -10,6 +10,8 @@ import { budgetRoutes } from './routes/budgetRoutes.js'
 import { healthRoutes } from './routes/healthRoutes.js'
 import { insightRoutes } from './routes/insightRoutes.js'
 import { transactionRoutes } from './routes/transactionRoutes.js'
+import { groupRoutes } from './routes/groupRoutes.js'
+import { groupExpenseRoutes } from './routes/groupExpenseRoutes.js'
 
 export const app = express()
 
@@ -23,5 +25,7 @@ app.use('/api/budgets', budgetRoutes)
 app.use('/api/analytics', analyticsRoutes)
 app.use('/api/transactions', transactionRoutes)
 app.use('/api/insights', insightRoutes)
+app.use('/api/groups', groupRoutes)
+app.use('/api/groups/:groupId/expenses', groupExpenseRoutes)
 app.use(notFoundHandler)
 app.use(errorHandler)

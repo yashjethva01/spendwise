@@ -6,7 +6,7 @@ export function AppShell() {
   return <div className="app-shell">
     <aside className="sidebar">
       <div><div className="sidebar-brand">SpendWise <span>Pro</span></div><p className="sidebar-caption">Your money, made clearer.</p></div>
-      <nav className="main-nav" aria-label="Main navigation"><NavLink to="/" end>Overview</NavLink><NavLink to="/transactions">Transactions</NavLink><NavLink to="/budgets">Budgets</NavLink></nav>
+      <nav className="main-nav" aria-label="Main navigation"><NavLink to="/" end>Overview</NavLink><NavLink to="/transactions">Transactions</NavLink><NavLink to="/budgets">Budgets</NavLink><NavLink to="/groups">Group Expenses</NavLink></nav>
       <div className="sidebar-user"><div className="avatar">{user?.name.charAt(0).toUpperCase()}</div><div><strong>{user?.name}</strong><span>{user?.email}</span></div><button type="button" className="icon-button" onClick={logout} aria-label="Sign out">↗</button></div>
     </aside>
     <main className="main-content"><Outlet /></main>

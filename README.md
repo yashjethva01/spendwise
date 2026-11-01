@@ -16,6 +16,7 @@ Gemini-powered spending summary.
 - Responsive React dashboard with Recharts
 - Transaction and budget management screens
 - Optional Gemini spending assistant using aggregate financial data only
+- Group expenses with invitations, shared bills, balances, and settlements
 - Centralized validation and API error responses
 - Health endpoint with database status
 
@@ -50,6 +51,13 @@ HTTP request
 
 The backend never trusts a client-supplied user ID. Authenticated ownership
 comes from the verified JWT subject and is included in every user-owned query.
+
+Group expenses use INR minor units (paise) and remain separate from personal
+transactions. Shared bills and settlements are therefore excluded from the
+personal monthly analytics endpoint, avoiding duplicate consumption totals.
+Equal, exact, and percentage splits are calculated and validated on the server.
+Group invitations are persistent in-app notifications backed by MongoDB; email,
+push, and real-time delivery are not implemented.
 
 ## Technology stack
 
@@ -202,6 +210,17 @@ Authorization: Bearer <jwt>
 - `DELETE /api/budgets/:id`
 - `GET /api/analytics/monthly?year=YYYY&month=M`
 - `POST /api/insights/spending-summary`
+- `POST /api/groups`
+- `GET /api/groups`
+- `GET /api/groups/:id`
+- `POST /api/groups/:id/invitations`
+- `GET /api/groups/invitations`
+- `POST /api/groups/invitations/:id/respond`
+- `GET /api/groups/:groupId/expenses`
+- `POST /api/groups/:groupId/expenses`
+- `GET /api/groups/:groupId/expenses/balances`
+- `GET /api/groups/:groupId/expenses/settlement-suggestions`
+- `POST /api/groups/:groupId/expenses/settlements`
 
 Request and response examples are available in
 [server/API.md](./server/API.md).

@@ -191,3 +191,45 @@ is unavailable, the endpoint returns a safe `503` response and the core
 dashboard remains available. The default model is `gemini-3.8-flash`; set
 `GEMINI_MODEL` in `server/.env` if you want to use another model available to
 your API key.
+
+## Group expenses
+
+Group expense amounts use integer minor units. For INR, `100` means ₹1.00.
+Group expenses are intentionally separate from personal transactions and are
+not included in `/api/analytics/monthly`; this prevents shared bills and
+settlements from being double-counted in personal spending.
+
+Protected endpoints include:
+
+- `POST /api/groups`
+- `GET /api/groups`
+- `GET /api/groups/:id`
+- `PATCH /api/groups/:id`
+- `POST /api/groups/:id/invitations`
+- `GET /api/groups/invitations`
+- `POST /api/groups/invitations/:id/respond`
+- `POST /api/groups/:id/leave`
+- `GET /api/groups/:groupId/expenses`
+- `POST /api/groups/:groupId/expenses`
+- `PATCH /api/groups/:groupId/expenses/:id`
+- `DELETE /api/groups/:groupId/expenses/:id`
+- `GET /api/groups/:groupId/expenses/balances`
+- `GET /api/groups/:groupId/expenses/settlement-suggestions`
+- `GET /api/groups/:groupId/expenses/settlements`
+- `POST /api/groups/:groupId/expenses/settlements`
+
+Invitations are delivered through the authenticated in-app invitation list;
+there is no email or real-time push delivery. `GET /api/groups/invitations`
+returns only pending invitations where the JWT subject is the `inviteeId`.
+`POST /api/groups/invitations/:id/respond` accepts `{ "status": "accepted" }`
+or `{ "status": "rejected" }`. The server verifies the recipient and pending
+state, adds an accepted member once, and rejects repeated or unauthorized
+responses.
+
+Expense creation supports `equal`, `exact`, and `percentage` split methods.
+Exact shares must total the expense amount and percentages must total 100%.
+Equal and percentage splits allocate leftover paise deterministically in
+participant order. A positive balance means the member should receive money;
+a negative balance means the member owes money. Settlement suggestions use a
+greedy debtor-to-creditor algorithm and are suggestions, not proof that money
+was transferred externally.
