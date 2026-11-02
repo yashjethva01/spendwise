@@ -209,7 +209,7 @@ Content-Type: application/json
 ```
 
 The backend calculates monthly analytics and budget usage first, then sends only
-those aggregates to Gemini. It does not send passwords, JWTs, email addresses,
+those aggregates to Groq. It does not send passwords, JWTs, email addresses,
 transaction descriptions, or raw transaction records.
 
 Response:
@@ -225,11 +225,12 @@ Response:
 }
 ```
 
-The endpoint is limited to five requests per user per fifteen minutes. If Gemini
-is unavailable, the endpoint returns a safe `503` response and the core
-dashboard remains available. The default model is `gemini-3.8-flash`; set
-`GEMINI_MODEL` in `server/.env` if you want to use another model available to
-your API key.
+The endpoint is limited to five requests per user per fifteen minutes. If Groq
+is unavailable, rate-limited, times out, or returns an invalid response, the
+endpoint returns a safe `503` or `502` response and the core dashboard remains
+available. Temporary provider failures receive a small bounded retry with
+exponential backoff. Set `GROQ_MODEL` in `server/.env` to choose another model
+available to your API key; the default is `openai/gpt-oss-120b`.
 
 ## Group expenses
 

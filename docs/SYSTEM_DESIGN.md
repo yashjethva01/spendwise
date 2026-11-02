@@ -5,7 +5,7 @@
 SpendWise is a modular monolith: the React/Vite browser client calls an
 Express/Node.js API, which applies authentication, validation, authorization,
 and business rules before reading or writing MongoDB through Mongoose.
-The optional Gemini integration is called only by the backend with aggregate
+The optional Groq integration is called only by the backend with aggregate
 financial data.
 
 ```mermaid
@@ -14,7 +14,7 @@ flowchart LR
   API --> Middleware["Helmet, CORS, auth, Zod"]
   Middleware --> Services["Controllers and services"]
   Services --> Mongo["MongoDB via Mongoose"]
-  Services --> Gemini["Gemini API (optional)"]
+  Services --> Groq["Groq API (optional)"]
 ```
 
 ## Request lifecycle

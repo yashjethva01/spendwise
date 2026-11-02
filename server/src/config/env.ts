@@ -4,8 +4,8 @@ const port = Number(process.env.PORT ?? 5000)
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:5173'
 const mongodbUri = process.env.MONGODB_URI?.trim()
 const jwtSecret = process.env.JWT_SECRET?.trim()
-const geminiApiKey = process.env.GEMINI_API_KEY?.trim()
-const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash'
+const groqApiKey = process.env.GROQ_API_KEY?.trim()
+const groqModel = process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-120b'
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be an integer between 1 and 65535.')
@@ -29,6 +29,6 @@ export const env = {
   mongodbUri,
   jwtSecret,
   jwtExpiresIn: '1h' as const,
-  geminiApiKey,
-  geminiModel,
+  groqApiKey,
+  groqModel,
 } as const
